@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>✨ 给你的祝福 ✨</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body {
+    width:100%; height:100%;
+    overflow:hidden;
+    font-family: -apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+    background:#0a0a1a;
+    -webkit-tap-highlight-color:transparent;
+    user-select:none;
+    -webkit-user-select:none;
+  }
+  canvas { position:fixed; top:0; left:0; z-index:0; }
+
+  /* 提示文字 */
+  .hint {
+    position:fixed; bottom:40px; left:0; right:0;
+    text-align:center; z-index:2;
+    pointer-events:none;
+  }
+  .hint span {
+    font-size:13px; color:rgba(255,255,255,0.45);
+    letter-spacing:2px;
+    animation: hintPulse 3s ease-in-out infinite;
+  }
+  @keyframes hintPulse {
+    0%,100% { opacity:0.35; }
+    50%     { opacity:0.7; }
+  }
+
+  /* 顶部标题 */
+  .title {
+    position:fixed; top:50px; left:0; right:0;
+    text-align:center; z-index:2;
+    pointer-events:none;
+  }
+  .title h1 {
+    font-size:22px; font-weight:300;
+    color:rgba(255,255,255,0.8);
+    letter-spacing:6px;
+  }
+
+  /* 音乐按钮 */
+  .music-btn {
+    position:fixed; top:100px; left:50%; transform:translateX(-50%); z-index:5;
+    padding:12px 24px;
+    border-radius:50px;
+    background:rgba(255,130,160,0.35);
+    backdrop-filter:blur(10px);
+    -webkit-backdrop-filter:blur(10px);
+    border:1px solid rgba(255,255,255,0.3);
+    display:flex; align-items:center; gap:8px;
+    font-size:14px; color:rgba(255,255,255,0.85);
+    letter-spacing:1px; cursor:pointer;
+    -webkit-tap-highlight-color:transparent;
+    white-space:nowrap;
+    animation: musicGlow 2s ease-in-out infinite;
+  }
+  .music-btn:active { background:rgba(255,255,255,0.3); }
+  .music-btn.playing {
+    background:rgba(255,105,180,0.25);
+    border-color:rgba(255,105,180,0.5);
+    color:#ffb6c1;
+    animation-name: musicGlowPink;
+    animation-duration: 0.8s;
+  }
+  @keyframes musicGlow {
+    0%,100% { box-shadow:0 0 10px rgba(255,255,255,0.2); }
+    50%     { box-shadow:0 0 25px rgba(255,255,255,0.4); }
+  }
+  @keyframes musicGlowPink {
+    0%,100% { box-shadow:0 0 12px rgba(255,105,180,0.3); }
+    50%     { box-shadow:0 0 28px rgba(255,105,180,0.6); }
+  }
+</style>
+</head>
+<body>
+
+<canvas id="c"></canvas>
+
+<!-- ★ 替换音乐：把下面 src 里的链接换成邓紫棋《唯一》的 mp3 地址 ★ -->
+<audio id="bg-music" src="music.mp3" loop preload="none"></audio>
+<!-- ↑ 本地音乐文件，和 HTML 放在同一个仓库里 -->
+
+<div class="music-btn" id="music-btn" onclick="toggleMusic()">🎵 点我放音乐</div>
+
+<div class="title"><h1>✨ 给你的祝福 ✨</h1></div>
+<div class="hint"><span>轻触屏幕 点亮祝福 | v3 🎵</span></div>
+
+<!-- ★ 修改祝福语：直接改下面数组，增减条目即可 -->
+<script>
+// ★★★★★ 祝福语列表（随便改、随便增减）★★★★★
+const BLESSINGS = [
+  '愿你每天醒来\n都能感受到被爱',
+  '愿你的笑容\n永远如初见般灿烂',
+  '愿风吹过你耳边时\n替我轻说一声想你',
+  '愿星光落在你枕边\n守护你每一个梦',
+  '愿你的小脾气\n永远有人宠着',
+  '愿下雨天你总有伞\n疲惫时你总有肩膀',
+  '愿你所念之人\n也正在念你',
+  '愿时光温柔\n待你如初',
+  '愿你在人海里\n永远是我一眼就能找到的人',
+  '愿你的早安和晚安\n都有我参与',
+  '愿每一顿饭都热着\n每一个拥抱都暖着',
+  '愿你不必长大\n永远做我的小朋友',
+  '愿四季更替\n而我一直在这里',
+  '愿这份心意\n穿过屏幕抵达你心里',
+  '愿你此生尽兴\n赤诚善良',
+  '愿有人陪你颠沛流离\n如果没有\n我愿成为那个人',
+  '愿世间美好\n与你环环相扣',
+  '愿你眼角带笑\n岁月不染眉梢',
+  '愿你往后余生\n冷暖有相知',
+  '愿你不必完美\n因为在我眼里你已经是了',
+  '愿你的小情绪\n都有人温柔接住',
+  '愿你所有的温柔\n都能被这个世界善待',
+  '愿你三冬暖\n愿你春不寒',
+  '愿你天黑有灯\n下雨有伞',
+  '愿时光能缓\n愿故人不散',
+  '愿你惦念的人\n也正和你道晚安',
+  '愿山野浓雾都有路灯\n风雨漂泊都能归舟',
+  '愿你如阳光般灿烂\n如星星般闪耀',
+  '愿你所到之处\n遍地阳光',
+  '愿你梦的远方\n温暖为向',
+  '愿你一生努力\n一生被爱',
+  '愿你眼中总有光芒\n活成你想要的模样',
+  '愿岁月可回首\n且以深情共白头',
+  '愿我和你\n从心动到古稀',
+  '愿余生有人鲜衣怒马\n陪你看烈焰繁花',
+  '愿未来所有的好\n都与你有关',
+  '愿你温柔半两\n从容一生',
+  '愿你心之所向\n皆是暖阳',
+  '愿有人懂你欲言又止\n也有人心疼你欲语还休',
+  '愿你所求皆如愿\n所行化坦途',
+  '愿你即使单枪匹马\n也能勇敢无畏',
+  '愿你的可爱\n可以治愈一切不可爱',
+  '爱你宝宝 💕',
+  '记得吃饭 🍚',
+  '快快乐乐 🎈',
+  '健康平安 🍀',
+];
+
+// ========== 星空 + 祝福卡片引擎 ==========
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+
+let W, H;
+const stars = [];
+const cards = [];
+const STAR_COUNT = 120;
+
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener('resize', resize);
+window.addEventListener('orientationchange', () => setTimeout(resize, 300));
+
+// 初始化星星
+for (let i = 0; i < STAR_COUNT; i++) {
+  stars.push({
+    x: Math.random() * 9999, y: Math.random() * 9999,
+    r: Math.random() * 1.5 + 0.3,
+    twinkle: Math.random() * Math.PI * 2,
+    speed: 0.005 + Math.random() * 0.02,
+  });
+}
+
+// 祝福卡片类
+class BlessingCard {
+  constructor(x, y) {
+    this.x = x;
+    this.y = y;
+    this.vy = -0.25 - Math.random() * 0.45; // 缓缓上浮
+    this.vx = (Math.random() - 0.5) * 0.2;
+    this.alpha = 0;
+    this.targetAlpha = 0.85;
+    this.fadeInSpeed = 0.012;
+    this.life = 1;          // 1 → 0
+    this.decay = 0.0015 + Math.random() * 0.002;
+    this.scale = 0.7 + Math.random() * 0.6;
+    this.rotation = (Math.random() - 0.5) * 0.1;
+
+    // 随机取一句祝福
+    this.text = BLESSINGS[Math.floor(Math.random() * BLESSINGS.length)];
+
+    // 柔和配色：粉/紫/金/蓝/薄荷
+    const palettes = [
+      ['#ffb3ba','#ffc3a0'], ['#ffdfba','#ffffba'],
+      ['#e0c3fc','#c3f0fc'], ['#bae1ff','#baffc9'],
+      ['#ffe4e1','#e6e6fa'], ['#fff0f5','#f0e6ff'],
+      ['#ffe0b2','#ffccbc'], ['#d4e4ff','#e8d5ff'],
+    ];
+    const p = palettes[Math.floor(Math.random() * palettes.length)];
+    this.gradientStart = p[0];
+    this.gradientEnd   = p[1];
+  }
+
+  update() {
+    this.x += this.vx;
+    this.y += this.vy;
+    // 淡入
+    if (this.alpha < this.targetAlpha) {
+      this.alpha += this.fadeInSpeed;
+    }
+    // 生命衰减
+    this.life -= this.decay;
+    // 快结束时加速淡出
+    if (this.life < 0.25) {
+      this.alpha = this.life / 0.25 * this.targetAlpha;
+    }
+    return this.life > 0 && this.y > -200;
+  }
+
+  draw(ctx) {
+    if (this.alpha <= 0.01) return;
+    ctx.save();
+    ctx.globalAlpha = this.alpha;
+    ctx.translate(this.x, this.y);
+    ctx.rotate(this.rotation);
+
+    const w = 210 * this.scale;
+    const h = 90 * this.scale;
+    const r = 16 * this.scale;
+
+    // 卡片背景（圆角矩形）
+    const grad = ctx.createLinearGradient(0, 0, 0, h);
+    grad.addColorStop(0, this.gradientStart);
+    grad.addColorStop(1, this.gradientEnd);
+    ctx.fillStyle = grad;
+    ctx.shadowColor = 'rgba(255,255,255,0.25)';
+    ctx.shadowBlur = 20 * this.scale;
+    ctx.beginPath();
+    ctx.moveTo(-w/2 + r, -h/2);
+    ctx.lineTo(w/2 - r, -h/2);
+    ctx.arcTo(w/2, -h/2, w/2, -h/2 + r, r);
+    ctx.lineTo(w/2, h/2 - r);
+    ctx.arcTo(w/2, h/2, w/2 - r, h/2, r);
+    ctx.lineTo(-w/2 + r, h/2);
+    ctx.arcTo(-w/2, h/2, -w/2, h/2 - r, r);
+    ctx.lineTo(-w/2, -h/2 + r);
+    ctx.arcTo(-w/2, -h/2, -w/2 + r, -h/2, r);
+    ctx.closePath();
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    // 装饰小圆点
+    ctx.fillStyle = 'rgba(255,255,255,0.5)';
+    ctx.beginPath();
+    ctx.arc(-w/2 + 14*this.scale, -h/2 + 14*this.scale, 3*this.scale, 0, Math.PI*2);
+    ctx.fill();
+
+    // 文字
+    ctx.fillStyle = 'rgba(60,30,50,0.85)';
+    const lines = this.text.split('\n');
+    const fontSize = 14 * this.scale;
+    ctx.font = `600 ${fontSize}px -apple-system,"PingFang SC","Microsoft YaHei",sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const lineHeight = fontSize * 1.6;
+    const totalH = lines.length * lineHeight;
+    const startY = -totalH / 2 + lineHeight / 2;
+    lines.forEach((line, i) => {
+      ctx.fillText(line, 0, startY + i * lineHeight);
+    });
+
+    ctx.restore();
+  }
+}
+
+// 生成一张祝福卡片
+function spawnCard(tapX, tapY) {
+  // 优先使用点击位置，否则随机
+  const x = (tapX != null) ? tapX : W * 0.2 + Math.random() * W * 0.6;
+  const y = (tapY != null) ? tapY : H * 0.5 + Math.random() * H * 0.3;
+  cards.push(new BlessingCard(x, y));
+}
+
+// 点击事件
+canvas.addEventListener('click', e => {
+  spawnCard(e.clientX, e.clientY);
+});
+canvas.addEventListener('touchstart', e => {
+  // 不阻止默认，但要拿坐标
+  const t = e.touches[0];
+  spawnCard(t.clientX, t.clientY);
+}, { passive: true });
+
+// 初始生成几张卡片
+setTimeout(() => {
+  for (let i = 0; i < 3; i++) {
+    setTimeout(() => spawnCard(), i * 600);
+  }
+}, 400);
+
+// 自动定时补充
+setInterval(() => {
+  if (cards.length < 8) spawnCard();
+}, 2500);
+
+// ========== 渲染循环 ==========
+function drawStars() {
+  stars.forEach(s => {
+    s.twinkle += s.speed;
+    const alpha = 0.2 + Math.abs(Math.sin(s.twinkle)) * 0.7;
+    const sx = (s.x / 9999) * W;
+    const sy = (s.y / 9999) * H;
+
+    ctx.beginPath();
+    ctx.arc(sx, sy, s.r, 0, Math.PI*2);
+    ctx.fillStyle = `rgba(255,255,240,${alpha})`;
+    ctx.fill();
+
+    // 大星带光晕
+    if (s.r > 1.0) {
+      ctx.beginPath();
+      ctx.arc(sx, sy, s.r*3, 0, Math.PI*2);
+      ctx.fillStyle = `rgba(255,220,240,${alpha*0.2})`;
+      ctx.fill();
+    }
+  });
+}
+
+function tick() {
+  ctx.clearRect(0, 0, W, H);
+
+  // 背景微光渐变
+  const bg = ctx.createRadialGradient(W/2, H*0.35, 0, W/2, H*0.35, Math.max(W,H)*0.8);
+  bg.addColorStop(0, '#1a1a3a');
+  bg.addColorStop(1, '#0a0a1a');
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, W, H);
+
+  drawStars();
+
+  // 更新 & 绘制卡片
+  for (let i = cards.length - 1; i >= 0; i--) {
+    if (!cards[i].update()) {
+      cards.splice(i, 1);
+    } else {
+      cards[i].draw(ctx);
+    }
+  }
+
+  requestAnimationFrame(tick);
+}
+tick();
+
+// ========== 微信自动播放兼容 ==========
+document.addEventListener('touchstart', function awaken() {
+  // 仅用于解锁 audio context（如果有音乐需求可以后续加）
+}, { once: true });
+
+// ========== 音乐控制 ==========
+const bgMusic = document.getElementById('bg-music');
+const musicBtn = document.getElementById('music-btn');
+
+function toggleMusic() {
+  if (bgMusic.paused) {
+    bgMusic.volume = 0.4;
+    bgMusic.play().then(() => {
+      musicBtn.classList.add('playing');
+      musicBtn.innerHTML = '🎶 正在播放…';
+    }).catch(() => {
+      // 微信需用户手势才能播放，再点一次
+      musicBtn.innerHTML = '⚠️ 再点一次';
+      setTimeout(() => { musicBtn.innerHTML = '🎵 点我放音乐'; }, 1500);
+    });
+  } else {
+    bgMusic.pause();
+    musicBtn.classList.remove('playing');
+    musicBtn.innerHTML = '🎵 点我放音乐';
+  }
+}
+
+document.title = '✨ 给你的祝福 ✨';
+</script>
+</body>
+</html>
